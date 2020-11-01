@@ -61,7 +61,7 @@ def makestr(node):
     else:
         return '(' + typename(node) + ' ' + str(node) + ')'
 
-def main():
+class DjangoNormalizer:
     p_elif = re.compile(r'^elif\s?')
     p_else = re.compile(r'^else\s?')
     p_try = re.compile(r'^try\s?')
@@ -69,23 +69,35 @@ def main():
     p_finally = re.compile(r'^finally\s?')
     p_decorator = re.compile(r'^@.*')
 
-    for l in sys.stdin:
+    def normalize(self, l):
         l = l.strip()
         if not l:
             print()
             sys.stdout.flush()
-            continue
+            return None
 
-        if p_elif.match(l): l = 'if True: pass\n' + l
-        if p_else.match(l): l = 'if True: pass\n' + l
+        if self.p_elif.match(l): l = 'if True: pass\n' + l
+        if self.p_else.match(l): l = 'if True: pass\n' + l
 
-        if p_try.match(l): l = l + 'pass\nexcept: pass'
-        elif p_except.match(l): l = 'try: pass\n' + l
-        elif p_finally.match(l): l = 'try: pass\n' + l
-        
-        if p_decorator.match(l): l = l + '\ndef dummy(): pass'
+        if self.p_try.match(l):
+            l = l + 'pass\nexcept: pass'
+        elif self.p_except.match(l):
+            l = 'try: pass\n' + l
+        elif self.p_finally.match(l):
+            l = 'try: pass\n' + l
+
+        if self.p_decorator.match(l): l = l + '\ndef dummy(): pass'
         if l[-1] == ':': l = l + 'pass'
 
+        return l
+
+
+def main():
+    normalizer = DjangoNormalizer()
+    for l in sys.stdin:
+        l = normalizer.normalize(l)
+        if l is None:
+            continue
         parse = ast.parse(l)
         parse = parse.body[0]
         dump = makestr(parse)
